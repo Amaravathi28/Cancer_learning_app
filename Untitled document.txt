@@ -1,1 +1,221 @@
-.
+import os
+from typing import List, Dict
+import streamlit as st
+
+st.set_page_config(page_title="Cancer Learning App", page_icon="🧬", layout="wide")
+
+# ---------- Image Assets (replace with your GitHub image URLs) ----------
+QUIZ_HEADER_IMG = "https://raw.githubusercontent.com/<your-username>/<repo>/main/quiz_header.png"
+MODULES_UI_IMG  = "https://raw.githubusercontent.com/<your-username>/<repo>/main/modules_ui.png"
+PLACEHOLDER     = "https://raw.githubusercontent.com/<your-username>/<repo>/main/placeholder.png"
+
+# ---------- Session State ----------
+if "page" not in st.session_state: st.session_state.page = "home"
+if "studied" not in st.session_state: st.session_state.studied = {}
+if "quiz_scores" not in st.session_state: st.session_state.quiz_scores = {}
+
+# ---------- Data Models ----------
+class Section:
+    def __init__(self, key: str, title: str, body: str, image: str = PLACEHOLDER):
+        self.key, self.title, self.body, self.image = key, title, body, image
+
+class Module:
+    def __init__(self, key: str, icon: str, title: str, summary: str, sections: List[Section], quiz: List[Dict]):
+        self.key, self.icon, self.title, self.summary, self.sections, self.quiz = key, icon, title, summary, sections, quiz
+
+MODULES: Dict[str, Module] = {}
+def add_module(m: Module): MODULES[m.key] = m
+
+# ---------- Content Modules ----------
+add_module(Module(
+    key="intro", icon="📘", title="Introduction to Cancer",
+    summary="Basics of cancer: benign vs malignant, hallmarks, and how cancer cells break normal rules.",
+    sections=[
+        Section("what","📖 What is Cancer?",
+                "Cancer is a collection of diseases where abnormal cells grow uncontrollably, invade nearby tissues, and may spread (metastasize). Benign tumors remain localized, while malignant tumors invade and spread.",
+                "https://raw.githubusercontent.com/<your-username>/<repo>/main/intro_cancer.png"),
+        Section("hallmarks","🧩 Hallmarks of Cancer",
+                "Cancers acquire traits: sustained proliferation, evading growth suppression, resisting cell death, replicative immortality, inducing angiogenesis, and activating invasion & metastasis. Enabling traits include genomic instability and tumor-promoting inflammation.",
+                "https://raw.githubusercontent.com/<your-username>/<repo>/main/hallmarks.png"),
+    ],
+    quiz=[
+        {"q":"Which term describes abnormal cells confined to the original site?",
+         "options":["Metastasis","In situ","Benign","Necrosis"],"answer_idx":1},
+        {"q":"Forming new blood vessels is called:",
+         "options":["Apoptosis","Angiogenesis","Autophagy","Metaplasia"],"answer_idx":1},
+    ]
+))
+
+add_module(Module(
+    key="symptoms", icon="⚠️", title="Symptoms & Red Flags",
+    summary="Common systemic symptoms and organ-specific warning signs.",
+    sections=[
+        Section("general","🧾 General Symptoms",
+                "Persistent fatigue, weight loss, fever/night sweats, non-healing sores, unusual bleeding, or recurrent infections may signal cancer.",
+                "https://raw.githubusercontent.com/<your-username>/<repo>/main/symptoms.png"),
+        Section("organ","🧍 Organ-Specific Symptoms",
+                "Breast: new lump, nipple discharge. Lung: persistent cough, hemoptysis. GI: blood in stool. Skin: changing mole (ABCDE rule).",
+                "https://raw.githubusercontent.com/<your-username>/<repo>/main/symptoms_specific.png"),
+    ],
+    quiz=[{"q":"A changing mole with irregular borders is a red flag for:",
+           "options":["Melanoma risk","Stroke","Arthritis","Asthma"],"answer_idx":0}]
+))
+
+add_module(Module(
+    key="causes", icon="🧬", title="Causes & Risk Factors",
+    summary="Cancer arises from genetic mutations, carcinogen exposure, infections, and inherited syndromes.",
+    sections=[
+        Section("mutations","🧠 Genetic & Epigenetic",
+                "Mutations in oncogenes, tumor suppressors, and DNA repair genes drive cancer. Epigenetic changes (DNA methylation, histone modification) also contribute.",
+                "https://raw.githubusercontent.com/<your-username>/<repo>/main/causes_mutations.png"),
+        Section("carcinogens","☢️ Carcinogens",
+                "Tobacco, radiation, asbestos, benzene, obesity, alcohol, and inactivity all raise cancer risk.",
+                "https://raw.githubusercontent.com/<your-username>/<repo>/main/causes_carcinogens.png"),
+        Section("infection","🧫 Infections",
+                "HPV → cervical cancer, HBV/HCV → liver cancer, H. pylori → stomach cancer, EBV → lymphoma.",
+                "https://raw.githubusercontent.com/<your-username>/<repo>/main/causes_infections.png"),
+    ],
+    quiz=[{"q":"Which pathogen is most linked to cervical cancer?",
+           "options":["HBV","H. pylori","HPV","EBV"],"answer_idx":2}]
+))
+
+add_module(Module(
+    key="types", icon="🩺", title="Types & Staging",
+    summary="Cancer classification by origin and TNM staging.",
+    sections=[
+        Section("origin","🧫 Cell of Origin",
+                "Carcinomas (epithelial), Sarcomas (connective), Leukemias (blood), Lymphomas (lymphatic), Myelomas (plasma cells).",
+                "https://raw.githubusercontent.com/<your-username>/<repo>/main/types_origin.png"),
+        Section("staging","🎯 Staging",
+                "TNM: Tumor size/invasion, Nodes, Metastasis. Higher stages indicate more advanced disease.",
+                "https://raw.githubusercontent.com/<your-username>/<repo>/main/types_staging.png"),
+    ],
+    quiz=[{"q":"Which group typically does NOT form solid tumors?",
+           "options":["Carcinomas","Sarcomas","Leukemias","CNS tumors"],"answer_idx":2}]
+))
+
+add_module(Module(
+    key="tme", icon="🌿", title="Tumor Microenvironment",
+    summary="The surrounding environment that supports cancer growth.",
+    sections=[
+        Section("ecosystem","🧭 Components",
+                "Cancer cells interact with fibroblasts, immune cells, endothelial cells, and extracellular matrix.",
+                "https://raw.githubusercontent.com/<your-username>/<repo>/main/tme.png"),
+        Section("immune","🛡️ Immune Evasion",
+                "Cancers evade immunity via PD-1/PD-L1, Tregs, and immunosuppressive niches.",
+                "https://raw.githubusercontent.com/<your-username>/<repo>/main/tme_immune.png"),
+    ],
+    quiz=[{"q":"Angiogenesis primarily provides:",
+           "options":["Hormones","Blood supply","Antibodies","Lymph"],"answer_idx":1}]
+))
+
+add_module(Module(
+    key="detection", icon="🔍", title="Detection & Diagnosis",
+    summary="Screening, imaging, and biopsy methods.",
+    sections=[
+        Section("screen","🧪 Screening",
+                "Screening finds cancer in asymptomatic people (e.g. mammography, Pap test, colonoscopy).",
+                "https://raw.githubusercontent.com/<your-username>/<repo>/main/detection_screening.png"),
+        Section("biopsy","🧫 Biopsy",
+                "Biopsy and pathology are gold standards. Reports include histology, margins, and molecular markers.",
+                "https://raw.githubusercontent.com/<your-username>/<repo>/main/detection_biopsy.png"),
+    ],
+    quiz=[{"q":"Gold standard to confirm cancer:",
+           "options":["CT","MRI","Biopsy","Ultrasound"],"answer_idx":2}]
+))
+
+add_module(Module(
+    key="treatments", icon="💊", title="Treatments",
+    summary="From surgery and chemotherapy to immunotherapy and CAR-T.",
+    sections=[
+        Section("standard","🧰 Standard Therapies",
+                "Surgery, chemotherapy, radiation, hormone therapy.",
+                "https://raw.githubusercontent.com/<your-username>/<repo>/main/treatments_standard.png"),
+        Section("modern","🎛️ Modern Approaches",
+                "Targeted therapy (TKIs, anti-HER2), immunotherapy (checkpoint inhibitors, CAR-T).",
+                "https://raw.githubusercontent.com/<your-username>/<repo>/main/treatments_modern.png"),
+    ],
+    quiz=[{"q":"Which therapy engineers T-cells to attack cancer?",
+           "options":["Chemotherapy","Radiation","CAR-T","Hormone therapy"],"answer_idx":2}]
+))
+
+add_module(Module(
+    key="prevention", icon="🛡️", title="Prevention & Lifestyle",
+    summary="Healthy habits, vaccines, and screening reduce cancer risk.",
+    sections=[
+        Section("habits","🥗 Healthy Habits",
+                "No tobacco, balanced diet, regular activity, sun protection, vaccines (HPV, HBV).",
+                "https://raw.githubusercontent.com/<your-username>/<repo>/main/prevention.png"),
+        Section("myths","❗ Myths vs Facts",
+                "Not all cancers are inherited. Absence of pain ≠ absence of cancer.",
+                "https://raw.githubusercontent.com/<your-username>/<repo>/main/prevention_myths.png"),
+    ],
+    quiz=[{"q":"Which vaccine helps prevent cervical cancer?",
+           "options":["HPV","Influenza","Tetanus","Varicella"],"answer_idx":0}]
+))
+
+# ---------- Navbar ----------
+def top_navbar():
+    st.markdown(
+        """
+        <style>
+        .nav {display:flex;gap:14px;justify-content:center;padding:10px;
+              background:linear-gradient(90deg,#6a11cb,#2575fc);border-radius:14px;
+              box-shadow:0 3px 10px rgba(0,0,0,.15);}
+        .nav a {color:#fff;text-decoration:none;font-weight:600;padding:8px 14px;border-radius:10px;transition:.2s;}
+        .nav a:hover {background:rgba(255,255,255,.2);transform:scale(1.05);}
+        .nav a.active {background:#fff;color:#2575fc;}
+        </style>
+        """, unsafe_allow_html=True
+    )
+    labels = {"home":"🏠 Home","modules":"📚 Modules","quiz":"📝 Quiz"}
+    nav = '<div class="nav">'
+    for k,v in labels.items():
+        active = "active" if st.session_state.page == k else ""
+        nav += f'<a class="{active}" href="?page={k}">{v}</a>'
+    nav += "</div>"
+    st.markdown(nav, unsafe_allow_html=True)
+
+# ---------- Pages ----------
+def home_page():
+    st.image(MODULES_UI_IMG, use_column_width=True, caption="Explore modules in a clean grid")
+    st.title("🧬 Cancer Learning App")
+    st.markdown("Learn interactively: read detailed explanations, explore modules, and test your knowledge with quizzes.")
+
+def modules_page():
+    st.header("📚 Learning Modules")
+    for m in MODULES.values():
+        with st.expander(f"{m.icon} {m.title}"):
+            st.write(m.summary)
+            for sec in m.sections:
+                st.subheader(sec.title)
+                st.image(sec.image, use_column_width=True)
+                st.write(sec.body)
+
+def quiz_page():
+    st.image(QUIZ_HEADER_IMG, use_column_width=True)
+    st.header("📝 Quizzes")
+    for m in MODULES.values():
+        if not m.quiz: continue
+        st.subheader(f"{m.icon} {m.title}")
+        score, total = 0, len(m.quiz)
+        for i, q in enumerate(m.quiz):
+            ans = st.radio(q["q"], q["options"], key=f"{m.key}_q{i}")
+            if ans == q["options"][q["answer_idx"]]:
+                score += 1
+        if st.button(f"Check {m.title} Quiz", key=f"{m.key}_quizbtn"):
+            st.success(f"✅ You scored {score}/{total}")
+            st.session_state.quiz_scores[m.key] = (score, total)
+
+# ---------- Router ----------
+qp = st.experimental_get_query_params()
+if "page" in qp: st.session_state.page = qp["page"][0]
+top_navbar()
+
+if st.session_state.page == "home":
+    home_page()
+elif st.session_state.page == "modules":
+    modules_page()
+elif st.session_state.page == "quiz":
+    quiz_page()
+
