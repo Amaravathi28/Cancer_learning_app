@@ -1,0 +1,414 @@
+﻿# cancer_learning_app.py
+import os
+from typing import List, Dict
+import streamlit as st
+import pandas as pd
+
+
+st.set_page_config(page_title="Cancer Learning App", page_icon="🧬", layout="wide")
+
+
+# ---------- Assets (use your uploaded screenshots if available) ----------
+QUIZ_HEADER_IMG = "/mnt/data/file-G4RvvaLFaRqBWTdg45C97B"   # 1st image (attendance-like)
+MODULES_UI_IMG  = "/mnt/data/file-AheekfqqzffMgviZzTEZXm"   # 2nd image (grid-like)
+PLACEHOLDER     = "https://placehold.co/1200x400?text=Cancer+Learning+App"
+def img_path(x: str) -> str:
+    return x if (isinstance(x, str) and (x.startswith("http") or os.path.exists(x))) else PLACEHOLDER
+
+
+# ---------- Session State ----------
+if "page" not in st.session_state: st.session_state.page = "home"
+if "current_module" not in st.session_state: st.session_state.current_module = None
+if "studied" not in st.session_state: st.session_state.studied = {}          # {module_key: set(section_keys)}
+if "quiz_scores" not in st.session_state: st.session_state.quiz_scores = {}  # {"quiz1": (score,total), "intro": (score,total), ...}
+
+
+# ---------- Data Model ----------
+class Section:
+    def __init__(self, key: str, title: str, body: str, image: str = PLACEHOLDER):
+        self.key, self.title, self.body, self.image = key, title, body, image
+
+
+class Module:
+    def __init__(self, key: str, icon: str, title: str, summary: str, sections: List[Section], quiz: List[Dict]):
+        self.key, self.icon, self.title, self.summary, self.sections, self.quiz = key, icon, title, summary, sections, quiz
+
+
+MODULES: Dict[str, Module] = {}
+def add_module(m: Module): MODULES[m.key] = m
+
+
+def mark_studied(module_key: str, section_key: str, checked: bool):
+    s = st.session_state.studied.setdefault(module_key, set())
+    s.add(section_key) if checked else s.discard(section_key)
+
+
+def module_progress(m: Module) -> float:
+    n_sec = len(st.session_state.studied.get(m.key, set()))
+    quiz_done = 1 if st.session_state.quiz_scores.get(m.key) else 0
+    denom = len(m.sections) + (1 if m.quiz else 0)
+    return (n_sec + quiz_done) / max(1, denom)
+
+
+# ---------- Detailed Content ----------
+add_module(Module(
+    key="intro", icon="📘", title="Introduction to Cancer",
+    summary="What cancer is, benign vs malignant, hallmarks, and how cells break the rules.",
+    sections=[
+        Section("what","📖 What is Cancer? (Detailed)",
+                """Cancer is a collection of diseases where abnormal cells grow uncontrollably, invade nearby tissue,
+and may spread (metastasize). Benign tumors grow locally; malignant tumors invade and can spread. “In situ”
+lesions are confined to the tissue of origin (e.g., DCIS)."""),
+        Section("hallmarks","🧩 Hallmarks of Cancer",
+                """Capabilities acquired by cancers: sustained proliferative signaling; evading growth suppressors;
+resisting cell death; replicative immortality; inducing angiogenesis; activating invasion & metastasis.
+Enabling traits: genomic instability and tumor‑promoting inflammation. Immune evasion & metabolic rewiring also matter."""),
+        Section("cellcycle","⏱️ Cell Cycle & Checkpoints",
+                """Cells pass G1→S→G2→M with checkpoints. Oncogenes (RAS, MYC) are the accelerator; tumor suppressors (p53, RB) are brakes.
+Avoiding apoptosis lets damaged cells survive and expand."""),
+        Section("metastasis","🚚 Metastasis Steps",
+                """Local invasion → intravasation → survival in blood/lymph → extravasation → colonization.
+EMT can aid migration; later MET helps growth at new sites."""),
+    ],
+    quiz=[
+        {"q":"Which term describes abnormal cells confined to the original site?",
+         "options":["Metastasis","In situ","Benign","Necrosis"],"answer_idx":1},
+        {"q":"Forming new blood vessels is called:",
+         "options":["Apoptosis","Angiogenesis","Autophagy","Metaplasia"],"answer_idx":1},
+    ]
+))
+
+
+add_module(Module(
+    key="symptoms", icon="⚠️", title="Symptoms & Red Flags",
+    summary="Systemic symptoms, organ‑specific signs, and when to seek care/screening.",
+    sections=[
+        Section("general","🧾 General Symptoms",
+                """Persistent fatigue, unintended weight loss, fever/night sweats, non‑healing skin changes,
+unusual bleeding/bruising, recurrent infections (concerning if ≥2–3 weeks)."""),
+        Section("organ","🧍 Organ‑Specific",
+                """Breast: new lump, skin dimpling, nipple discharge. Lung: persistent cough, hemoptysis, breathlessness.
+GI: blood in stool, change in habits. Skin: changing mole (ABCDE). Neuro: persistent headache, seizures."""),
+        Section("screen","🩺 When to Seek Care / Screening",
+                """If symptoms persist or escalate, see a clinician. Screening (mammography, Pap/HPV, colorectal tests)
+detects early disease in at‑risk, asymptomatic people."""),
+    ],
+    quiz=[{"q":"A changing mole with irregular borders is a red flag for:",
+           "options":["Melanoma risk","Stroke","Arthritis","Asthma"],"answer_idx":0}]
+))
+
+
+add_module(Module(
+    key="causes", icon="🧬", title="Causes & Risk Factors",
+    summary="Mutations, carcinogens, infections, inherited syndromes, lifestyle.",
+    sections=[
+        Section("mutations","🧠 Genetic & Epigenetic",
+                """Mutations (point, indels, chromosomal) plus epigenetic shifts (DNA methylation, histones) dysregulate growth.
+Oncogenes gain function; tumor suppressors lose function; DNA‑repair defects allow error accumulation."""),
+        Section("carcinogens","☢️ Exposures",
+                """Tobacco; UV/ionizing radiation; asbestos, benzene, aflatoxins; obesity; alcohol; sedentary lifestyle."""),
+        Section("infection","🧫 Infections",
+                """HPV (cervical/oropharyngeal), HBV/HCV (liver), H. pylori (stomach), EBV (lymphoma), HTLV‑1, Schistosoma."""),
+        Section("inherited","🧬 Inherited Syndromes",
+                """BRCA1/2 (breast/ovarian), Lynch (MMR genes), APC/FAP (colorectal), TP53/Li‑Fraumeni (multiple)."""),
+    ],
+    quiz=[{"q":"Pathogen most linked to cervical cancer:",
+           "options":["HBV","H. pylori","HPV","EBV"],"answer_idx":2}]
+))
+
+
+add_module(Module(
+    key="types", icon="🩺", title="Types & Staging",
+    summary="By cell of origin and organ; grading and TNM staging essentials.",
+    sections=[
+        Section("origin","🧫 Cell of Origin",
+                """Carcinomas (epithelial), Sarcomas (connective), Leukemias (blood/bone marrow, non‑solid),
+Lymphomas (lymphatic), Myelomas (plasma cells), CNS tumors, Germ cell tumors, pediatric blastomas."""),
+        Section("organ","📍 Organ/System Examples",
+                """Digestive (colorectal, liver), Respiratory (lung), Reproductive (ovary, prostate),
+Urinary (kidney, bladder), Skin (melanoma)."""),
+        Section("staging","🎯 Grade & TNM",
+                """Grade = how abnormal cells look. TNM = Tumor size/invasion, Nodes, Metastasis; higher stage guides therapy options."""),
+        Section("table","📊 Quick Table","See compact reference table below (expand)."),
+    ],
+    quiz=[{"q":"Which group typically does NOT form solid tumors?",
+           "options":["Carcinomas","Sarcomas","Leukemias","CNS tumors"],"answer_idx":2}]
+))
+
+
+add_module(Module(
+    key="tme", icon="🌿", title="Tumor Microenvironment",
+    summary="Cells, matrix, vessels, and immune context that sustain tumors.",
+    sections=[
+        Section("ecosystem","🧭 Components",
+                """Cancer cells, CAFs, endothelial cells, pericytes, immune cells, ECM, cytokines/chemokines."""),
+        Section("immune","🛡️ Immune Evasion",
+                """Checkpoint pathways (PD‑1/PD‑L1), T‑regs, myeloid cells; hypoxia/acidic niche blunts immunity."""),
+        Section("why","🎯 Why Target TME?",
+                """Anti‑angiogenesis, ECM modulation, and immunotherapy can improve outcomes and combine well with other modalities."""),
+    ],
+    quiz=[{"q":"Angiogenesis primarily provides:",
+           "options":["Hormones","Blood supply","Antibodies","Lymph"],"answer_idx":1}]
+))
+
+
+add_module(Module(
+    key="detection", icon="🔍", title="Detection & Diagnosis",
+    summary="Screening vs diagnostic testing; imaging, biopsy, markers, pathology.",
+    sections=[
+        Section("screenvsdiag","🧪 Screening vs Diagnosis",
+                """Screening is for asymptomatic populations; diagnostic testing follows symptoms or abnormal screens."""),
+        Section("imaging","🩻 Imaging",
+                """X‑ray/US (basic), CT (cross‑sectional), MRI (soft tissue), PET/CT (metabolic activity)."""),
+        Section("biopsy","🧫 Biopsy & Pathology",
+                """FNA, core, excisional. Reports include histology, grade, margins, receptors/mutations (e.g., ER/PR/HER2)."""),
+        Section("emerging","🧪 Emerging",
+                """Liquid biopsy (ctDNA/CTCs) and AI‑assisted imaging/triage."""),
+    ],
+    quiz=[{"q":"Diagnostic gold standard to confirm cancer:",
+           "options":["CT","MRI","Biopsy","Ultrasound"],"answer_idx":2}]
+))
+
+
+add_module(Module(
+    key="treatments", icon="💊", title="Treatments",
+    summary="Intent, standard modalities, targeted/immune therapy, toxicity management.",
+    sections=[
+        Section("intent","🎯 Intent",
+                """Curative, neoadjuvant (before), adjuvant (after), and palliative goals."""),
+        Section("standard","🧰 Standard",
+                """Surgery; radiation (photons/protons); chemotherapy; hormone therapy for hormone‑driven cancers."""),
+        Section("modern","🎛️ Targeted & Immunotherapy",
+                """TKIs, anti‑HER2, PARP inhibitors; monoclonals/ADCs; checkpoint inhibitors; CAR‑T for select blood cancers."""),
+        Section("tox","🧯 Managing Toxicities",
+                """Antiemetics, growth factors, infection prophylaxis, nutrition, rehab, psychosocial care; survivorship follow‑up."""),
+    ],
+    quiz=[{"q":"Therapy that engineers a patient’s T‑cells to attack cancer:",
+           "options":["Chemotherapy","Radiation","CAR‑T therapy","Hormone therapy"],"answer_idx":2}]
+))
+
+
+add_module(Module(
+    key="prevention", icon="🛡️", title="Prevention & Lifestyle",
+    summary="Primary/secondary/tertiary prevention, habits, vaccines, screening.",
+    sections=[
+        Section("levels","🛡️ Levels of Prevention",
+                """Primary: avoid carcinogens, vaccines, healthy weight/activity.
+Secondary: screening. Tertiary: survivorship & late‑effect prevention."""),
+        Section("habits","🥗 Habits with Evidence",
+                """No tobacco; balanced diet; ≥150 min/wk activity; limit alcohol; sun protection; vaccines (HPV, HBV)."""),
+        Section("myths","❗ Myths vs Facts",
+                """Most cancers are not inherited; no pain ≠ no problem; sugar is not a cancer‑exclusive fuel."""),
+    ],
+    quiz=[{"q":"Which vaccine helps prevent cervical cancer?",
+           "options":["HPV","Influenza","Tetanus","Varicella"],"answer_idx":0}]
+))
+
+
+# ---------- Navbar ----------
+def top_navbar():
+    st.markdown(
+        """
+        <style>
+        .nav {display:flex;gap:14px;justify-content:center;padding:10px;
+              background:linear-gradient(90deg,#6a11cb,#2575fc);border-radius:14px;
+              box-shadow:0 3px 10px rgba(0,0,0,.15);}
+        .nav a {color:#fff;text-decoration:none;font-weight:600;padding:8px 14px;border-radius:10px;transition:.2s;}
+        .nav a:hover {background:rgba(255,255,255,.2);transform:scale(1.05);}
+        .nav a.active {background:#fff;color:#2575fc;}
+        </style>
+        """, unsafe_allow_html=True
+    )
+    labels = {"home":"🏠 Home","modules":"📚 Modules","quiz":"📝 Quiz"}
+    nav = '<div class="nav">'
+    for k,v in labels.items():
+        active = "active" if st.session_state.page == k else ""
+        nav += f'<a class="{active}" href="?page={k}">{v}</a>'
+    nav += "</div>"
+    st.markdown(nav, unsafe_allow_html=True)
+
+
+# Sync URL param -> state
+qp = st.experimental_get_query_params()
+if "page" in qp: st.session_state.page = qp["page"][0]
+top_navbar()
+
+
+# ---------- Pages ----------
+def home_page():
+    st.image(img_path(MODULES_UI_IMG), use_column_width=True, caption="Explore modules in a clean grid")
+    st.markdown(
+        """
+        <div style="background:linear-gradient(90deg,#6a11cb,#2575fc);padding:26px;border-radius:18px;color:white;text-align:center;margin-top:10px;">
+            <h1 style="margin:0">🧬 Cancer Learning App</h1>
+            <p style="font-size:18px;margin:8px 0 0;">Learn deeply, practice quizzes, track progress.</p>
+        </div>
+        """, unsafe_allow_html=True
+    )
+
+
+def modules_grid_page():
+    st.markdown("## 📚 Learning Modules")
+    q = st.text_input("Search modules…", "").lower().strip()
+    mods = [m for m in MODULES.values() if q in m.title.lower() or q in m.summary.lower()]
+    cols = st.columns(3)
+    for i, m in enumerate(mods):
+        with cols[i % 3]:
+            st.markdown(
+                f"""
+                <div style="background:#fff;border:1px solid #eee;border-radius:16px;padding:18px;
+                            box-shadow:0 6px 14px rgba(0,0,0,.06);">
+                    <div style="font-size:28px">{m.icon}</div>
+                    <h3 style="margin:4px 0 6px 0">{m.title}</h3>
+                    <p style="color:#555;min-height:56px">{m.summary}</p>
+                </div>
+                """, unsafe_allow_html=True
+            )
+            if st.button(f"Open {m.title}", key=f"open_{m.key}"):
+                st.session_state.current_module = m.key
+                st.session_state.page = "module_detail"
+                st.experimental_set_query_params(page="module_detail", module=m.key)
+                st.experimental_rerun()
+
+
+def module_detail_page():
+    key = st.experimental_get_query_params().get("module", [st.session_state.current_module])[0]
+    m = MODULES.get(key)
+    if not m:
+        st.error("Module not found."); return
+    st.markdown(f"# {m.icon} {m.title}")
+    st.write(m.summary)
+    prog = module_progress(m)
+    st.progress(prog, text=f"Progress: {int(prog*100)}%")
+
+
+    # Special compact table for Types
+    if m.key == "types":
+        with st.expander("📊 Compact Reference Table (expand)"):
+            df = pd.DataFrame({
+                "Category":["Carcinomas","Sarcomas","Leukemias","Lymphomas","Myelomas","CNS","Germ cell","Blastomas"],
+                "Origin":["Epithelia","Connective","Blood/BM","Lymphatic","Plasma cells","Brain/spine","Germ cells","Embryonal"],
+                "Examples":["Breast, lung, colon, prostate","Bone, muscle, fat","AML, ALL, CLL, CML",
+                            "Hodgkin, Non‑Hodgkin","Multiple myeloma","Glioma, meningioma",
+                            "Testis/ovary","Neuroblastoma, Wilms"]
+            })
+            st.dataframe(df, use_container_width=True)
+
+
+    for sec in m.sections:
+        with st.expander(sec.title):
+            st.image(img_path(sec.image), use_column_width=True)
+            st.markdown(sec.body)
+            checked = st.checkbox("Mark as studied", key=f"chk_{m.key}_{sec.key}",
+                                  value=sec.key in st.session_state.studied.get(m.key, set()))
+            mark_studied(m.key, sec.key, checked)
+
+
+    if m.quiz:
+        with st.expander("📑 Quick Quiz (counts toward module progress)"):
+            score = 0
+            for i, q in enumerate(m.quiz):
+                st.markdown(f"**Q{i+1}. {q['q']}**")
+                ans = st.radio("Choose one:", q["options"], index=None, key=f"{m.key}_qq{i}")
+                if ans is not None and q["options"].index(ans) == q["answer_idx"]:
+                    score += 1
+            if st.button("Check module quiz", key=f"check_{m.key}"):
+                st.session_state.quiz_scores[m.key] = (score, len(m.quiz))
+                st.success(f"Score: {score}/{len(m.quiz)}")
+            if m.key in st.session_state.quiz_scores:
+                s,t = st.session_state.quiz_scores[m.key]
+                st.caption(f"Last module‑quiz result: {s}/{t}")
+
+
+    st.page_link("?", label="← Back to Modules", icon="↩️")
+
+
+def quiz_page():
+    st.image(img_path(QUIZ_HEADER_IMG), use_column_width=True, caption="Quiz hub")
+    st.markdown(
+        """
+        <div style="background:#fff;border-radius:16px;padding:16px;margin-top:10px;
+                    box-shadow:0 6px 14px rgba(0,0,0,.08);">
+            <h2 style="margin:0">📝 Quizzes</h2>
+            <p style="color:#555;margin:6px 0 0">Practice with topic‑mixed questions. Scores tracked below.</p>
+        </div>
+        """, unsafe_allow_html=True
+    )
+
+
+    quizzes = {
+        "quiz1": {
+            "title": "Quiz 1 — Basics & Biology",
+            "questions": [
+                {"q":"Cancer is best described as:",
+                 "options":["A single disease","A group of diseases with uncontrolled cell growth","An infection","A vitamin deficiency"],"answer_idx":1},
+                {"q":"‘In situ’ means:",
+                 "options":["Widely metastatic","Confined to original tissue","Benign only","Ulcerated"],"answer_idx":1},
+                {"q":"Which is a hallmark of cancer?",
+                 "options":["Enhanced wound healing","Evading growth suppressors","Reduced blood supply","Permanent cell cycle arrest"],"answer_idx":1},
+                {"q":"The G1/S checkpoint is primarily regulated by:",
+                 "options":["RB/p53 pathways","Insulin","Hemoglobin","Keratin"],"answer_idx":0},
+            ],
+        },
+        "quiz2": {
+            "title": "Quiz 2 — Detection & Treatment",
+            "questions": [
+                {"q":"Diagnostic gold standard to confirm cancer:",
+                 "options":["CT","MRI","Biopsy","Ultrasound"],"answer_idx":2},
+                {"q":"Liquid biopsy looks for:",
+                 "options":["Tumor DNA or cells in blood","Liver enzymes only","Urine glucose","ECG changes"],"answer_idx":0},
+                {"q":"Therapy engineering a patient’s T‑cells:",
+                 "options":["Chemotherapy","CAR‑T therapy","Radiation","Hormone therapy"],"answer_idx":1},
+                {"q":"HPV vaccine helps prevent:",
+                 "options":["Cervical cancer","Pancreatic cancer","Glioblastoma","Sarcoma"],"answer_idx":0},
+            ],
+        }
+    }
+
+
+    for key, qz in quizzes.items():
+        with st.container():
+            st.markdown(
+                """<div style="background:#fff;border:1px solid #eee;border-radius:16px;
+                               padding:18px;margin:14px 0;box-shadow:0 6px 14px rgba(0,0,0,.06);">""",
+                unsafe_allow_html=True)
+            st.subheader(qz["title"])
+            score = 0
+            total = len(qz["questions"])
+            for i, q in enumerate(qz["questions"]):
+                st.markdown(f"**Q{i+1}. {q['q']}**")
+                ans = st.radio("Choose one:", q["options"], index=None, key=f"{key}_q{i}")
+                if ans is not None and q["options"].index(ans) == q["answer_idx"]:
+                    score += 1
+                st.markdown("<hr style='border:none;border-top:1px solid #eee;margin:10px 0'/>",
+                            unsafe_allow_html=True)
+
+
+            if st.button(f"Check {qz['title']}", key=f"check_{key}"):
+                st.session_state.quiz_scores[key] = (score, total)
+                st.success(f"Score: {score}/{total}")
+            if key in st.session_state.quiz_scores:
+                s,t = st.session_state.quiz_scores[key]
+                st.info(f"Last attempt: {s}/{t}")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+
+    # Overall quiz progress
+    got = sum(s for s,_ in st.session_state.quiz_scores.values()) if st.session_state.quiz_scores else 0
+    tot = sum(t for _,t in st.session_state.quiz_scores.values()) if st.session_state.quiz_scores else 1
+    st.progress(got/max(1,tot), text=f"Overall quiz progress: {got}/{tot} correct")
+
+
+# ---------- Router ----------
+page = st.session_state.page
+if page == "home":
+    home_page()
+elif page == "modules":
+    modules_grid_page()
+elif page == "module_detail":
+    module_detail_page()
+elif page == "quiz":
+    quiz_page()
+else:
+    st.session_state.page = "home"
+    home_page()
